@@ -1,13 +1,20 @@
 /*
  * msp.c
  *
- *  Created on: Aug 20, 2025
- *      Author: baris
+ * STM32 Low-level hardware initialization
+ * - NVIC setup
+ * - Peripheral clocks
+ * - GPIO pin configuration for UART, CAN, and Timer
+ *
+ * Created on: Aug 20, 2025
+ * Author: Barış Can Coşkun
  */
 
 #include "main.h"
 
-// processor specific
+/**
+  * @brief processor specific initialization
+  */
 void HAL_MspInit(void)
 {
 //  Here low level processor specific inits
@@ -24,7 +31,9 @@ void HAL_MspInit(void)
 
 }
 
-//peripheral specific
+/**
+  * @brief peripheral specific initialization: UART2
+  */
 void HAL_UART_MspInit(UART_HandleTypeDef *huart)
 {
 //	here do the low level inits of USART2 peripheral
@@ -44,6 +53,9 @@ void HAL_UART_MspInit(UART_HandleTypeDef *huart)
 	HAL_NVIC_SetPriority(USART2_IRQn, 15, 0);
 }
 
+/**
+  * @brief peripheral specific initialization: CAN1
+  */
 void HAL_CAN_MspInit(CAN_HandleTypeDef *hcan)
 {
 	GPIO_InitTypeDef gpio_can;
@@ -74,6 +86,9 @@ void HAL_CAN_MspInit(CAN_HandleTypeDef *hcan)
 
 }
 
+/**
+  * @brief peripheral specific initialization: Timer6
+  */
 void HAL_TIM_Base_MspInit(TIM_HandleTypeDef *htimer)
 {
   //1. enable the clock for the TIM6 peripheral

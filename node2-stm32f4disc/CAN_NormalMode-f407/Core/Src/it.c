@@ -1,49 +1,71 @@
 /*
  * it.c
  *
- *  Created on: Aug 20, 2025
- *      Author: baris
+ * STM32 Interrupt Service Routines (ISR)
+ * Handles system tick, UART, CAN, Timer, and EXTI interrupts.
+ *
+ * Created on: Aug 20, 2025
+ * Author: Barış Can Coşkun
  */
 
 #include "main.h"
+
 extern UART_HandleTypeDef huart2;
 extern TIM_HandleTypeDef htimer6;
 extern CAN_HandleTypeDef hcan1;
 
+/**
+  * @brief Handles System tick interrupt for HAL timekeeping
+  */
 void SysTick_Handler(void)
 {
 	 HAL_IncTick();
 	 HAL_SYSTICK_IRQHandler();
 }
 
+/**
+  * @brief Handles UART2 interrupts (Rx/Tx complete, errors)
+  */
 void USART2_IRQHandler(void)
 {
 //	Below func handles UART interrupt request, identify the reason
 	HAL_UART_IRQHandler(&huart2);
 }
 
+/**
+  * @brief Handles CAN1 Transmit interrupt
+  */
 void CAN1_TX_IRQHandler(void)
 {
 	HAL_CAN_IRQHandler(&hcan1);
 }
 
+/**
+  * @brief Handles CAN1 Receive FIFO0 interrupt
+  */
 void CAN1_RX0_IRQHandler()
 {
 	HAL_CAN_IRQHandler(&hcan1);
 }
 
+/**
+  * @brief Handles CAN1 Receive FIFO1 interrupt
+  */
 void CAN1_RX1_IRQHandler()
 {
 	HAL_CAN_IRQHandler(&hcan1);
 }
 
+/**
+  * @brief Handles CAN1 Status Change/Error interrupt
+  */
 void CAN1_SCE_IRQHandler(void)
 {
 	HAL_CAN_IRQHandler(&hcan1);
 }
 
 /**
-  * @brief This function handles Timer 6 interrupt and DAC underrun interrupts.
+  * @brief Handles Timer 6 interrupt and DAC underrun interrupts (used as 1 Hz time base).
   */
 void TIM6_DAC_IRQHandler(void)
 {
@@ -51,7 +73,8 @@ void TIM6_DAC_IRQHandler(void)
 }
 
 /**
-  * @brief This function handles EXTI line 0 interrupt.
+  * @brief Handles EXTI line 0 interrupt.
+  * In this project: user button (PC0).
   */
 void EXTI0_IRQHandler(void)
 {

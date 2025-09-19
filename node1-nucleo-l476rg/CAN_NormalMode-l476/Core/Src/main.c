@@ -17,7 +17,16 @@
 #include <stdio.h>
 #include <string.h>
 
-/* === Function Prototypes === */
+/* --- Peripheral handles --- */
+UART_HandleTypeDef huart2;
+TIM_HandleTypeDef  htimer6;
+CAN_HandleTypeDef  hcan1;
+
+/* --- Global vars --- */
+uint8_t req_counter = 0;  // counts 1s ticks, sends remote frame every 4s
+uint8_t led_no = 0;       // rotates LED number 1-4
+
+/* --- Function prototypes --- */
 void SystemClock_Config(void);
 void GPIO_Init(void);
 void UART2_Init(void);
@@ -28,14 +37,6 @@ void Error_Handler(void);
 void CAN1_Tx(void);
 void CAN1_Request(void);
 
-/* === Global Handles === */
-UART_HandleTypeDef huart2;
-TIM_HandleTypeDef  htimer6;
-CAN_HandleTypeDef hcan1;
-
-/* === Application Variables === */
-uint8_t req_counter = 0;  // counts 1s ticks, sends remote frame every 4s
-uint8_t led_no = 0;       // rotates LED number 1-4
 
 /**
   * @brief  The application entry point.
@@ -64,8 +65,8 @@ int main()
 		Error_Handler();
 	}
 
-
-	while(1);  // All work handled by interrupts
+	/* Main loop (all work handled in ISRs & callbacks) */
+	while(1);
 
 	return 0;
 }
@@ -145,21 +146,6 @@ void GPIO_Init(void)
 }
 
 /**
-  * @brief Configure TIM6 to generate update event every 1 second
-  * @retval None
-  */
-void TIMER6_Init(void)
-{
-  htimer6.Instance = TIM6;
-  htimer6.Init.Prescaler = 4199;
-  htimer6.Init.Period = 10000-1;
-  if( HAL_TIM_Base_Init(&htimer6) != HAL_OK )
-  {
-    Error_Handler();
-  }
-}
-
-/**
   * @brief Configure UART2 (115200 baud, 8N1)
   * Used for debug messages printed to serial terminal
   * @retval None
@@ -177,6 +163,21 @@ void UART2_Init(void)
 //		There is a problem
 		Error_Handler();
 	}
+}
+
+/**
+  * @brief Configure TIM6 to generate update event every 1 second
+  * @retval None
+  */
+void TIMER6_Init(void)
+{
+  htimer6.Instance = TIM6;
+  htimer6.Init.Prescaler = 4199;
+  htimer6.Init.Period = 10000-1;
+  if( HAL_TIM_Base_Init(&htimer6) != HAL_OK )
+  {
+    Error_Handler();
+  }
 }
 
 /**
@@ -232,19 +233,7 @@ void CAN_Filter_Config(void)
 	}
 }
 
-/**
-  * @brief Error Handler
-  *
-  * Currently: blocks execution in an infinite loop.
-  *
-  * Future work:
-  *   - Print detailed error messages over UART
-  *   - Blink error codes on an LED
-  *   - Reset the MCU automatically
-  */
-void Error_Handler(void) {
-    while (1);
-}
+/* ---------------- CAN FUNCTIONS ---------------- */
 
 /**
   * @brief Transmit LED command
@@ -314,10 +303,11 @@ void CAN1_Request(void)
 
 }
 
-/* =====================================================================
- *                          CAN CALLBACKS
- * ===================================================================== */
+/* ---------------- CALLBACKS ---------------- */
 
+/**
+  * @brief UART debug print on TX complete via Mailbox0
+  */
 void HAL_CAN_TxMailbox0CompleteCallback(CAN_HandleTypeDef *hcan)
 {
 	char msg[50];
@@ -326,12 +316,20 @@ void HAL_CAN_TxMailbox0CompleteCallback(CAN_HandleTypeDef *hcan)
 	// NOTE: Currently using blocking UART transmit for simplicity.
 	// In production, HAL_UART_Transmit_IT() (non-blocking) would be preferred.
 }
+
+/**
+  * @brief UART debug print on TX complete via Mailbox1
+  */
 void HAL_CAN_TxMailbox1CompleteCallback(CAN_HandleTypeDef *hcan)
 {
 	char msg[50];
 	sprintf(msg, "Message Transmitted from Mailbox1\r\n");
 	HAL_UART_Transmit(&huart2, (uint8_t *)msg, strlen(msg), HAL_MAX_DELAY);
 }
+
+/**
+  * @brief UART debug print on TX complete via Mailbox2
+  */
 void HAL_CAN_TxMailbox2CompleteCallback(CAN_HandleTypeDef *hcan)
 {
 	char msg[50];
@@ -339,6 +337,14 @@ void HAL_CAN_TxMailbox2CompleteCallback(CAN_HandleTypeDef *hcan)
 	HAL_UART_Transmit(&huart2, (uint8_t *)msg, strlen(msg), HAL_MAX_DELAY);
 }
 
+/**
+  * @brief Callback when a CAN frame is received in FIFO0
+  *
+  * - If Data Frame with ID 0x65D → extract LED command and update LEDs.
+  * - If Remote Frame with ID 0x651 → send a 2-byte response back.
+  * - If Data Frame with ID 0x651 → treat as reply (for debugging).
+  * - Debug messages are printed via UART2.
+  */
 void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *hcan)
 {
 	CAN_RxHeaderTypeDef RxHeader;
@@ -358,17 +364,6 @@ void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *hcan)
 
 }
 
-void HAL_CAN_ErrorCallback(CAN_HandleTypeDef *hcan)
-{
-	char msg[50];
-	sprintf(msg, "CAN Error Detected\r\n");
-	HAL_UART_Transmit(&huart2, (uint8_t *)msg, strlen(msg), HAL_MAX_DELAY);
-}
-
-/* =====================================================================
- *                       TIM6 CALLBACK
- * ===================================================================== */
-
 /**
   * @brief TIM6 periodic interrupt callback
   *
@@ -387,6 +382,28 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 		req_counter = 0;
 	}
 }
+
+void HAL_CAN_ErrorCallback(CAN_HandleTypeDef *hcan)
+{
+	char msg[50];
+	sprintf(msg, "CAN Error Detected\r\n");
+	HAL_UART_Transmit(&huart2, (uint8_t *)msg, strlen(msg), HAL_MAX_DELAY);
+}
+
+/**
+  * @brief Error Handler
+  *
+  * Currently: blocks execution in an infinite loop.
+  *
+  * Future work:
+  *   - Print detailed error messages over UART
+  *   - Blink error codes on an LED
+  *   - Reset the MCU automatically
+  */
+void Error_Handler(void) {
+    while (1);
+}
+
 
 
 

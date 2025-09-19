@@ -7,6 +7,7 @@
  * Created on: Aug 22, 2025
  * Author: Barış Can Coşkun
  */
+
 #include "main.h"
 
 extern UART_HandleTypeDef huart2;
