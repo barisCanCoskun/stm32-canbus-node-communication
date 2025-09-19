@@ -55,7 +55,8 @@ The setup closely follows the concept shown below, adapted to different hardware
  
 Below is the actual setup used for this project: 
  
-![Hardware Setup](docs/images/hardware_setup.jpg) 
+![can-hw-setup](https://github.com/user-attachments/assets/a69f4582-5cf1-4068-8f07-1b2a2d465575) 
+ 
  
 --- 
 
