@@ -9,8 +9,9 @@
     This routes the 8 MHz ST-LINK oscillator into the STM32 as HSE input. 
  
 📸 See image below: 
+ 
 ![bottom_side_of_the_nucleo-l476rg](https://github.com/user-attachments/assets/16d87dc7-210a-41f4-98f4-c87de2fd7547) 
-
+ 
  
 Effect in Code: 
 Without these solder bridges, the code will not run because 
